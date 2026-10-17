@@ -14,3 +14,8 @@ dependencies = [
 
 [tool.fastapi]
 entrypoint = "app.main:app"
+
+# Run as an application (install dependencies only). Without this the builder tries to package the repo
+# and fails on the app/, static/ and samples/ folders ("Multiple top-level packages discovered").
+[tool.uv]
+package = false
