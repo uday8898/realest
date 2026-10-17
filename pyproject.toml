@@ -19,3 +19,13 @@ entrypoint = "app.main:app"
 # and fails on the app/, static/ and samples/ folders ("Multiple top-level packages discovered").
 [tool.uv]
 package = false
+
+# Explicit package discovery: the repo is an application, not a library. Without this the builder's setuptools
+# step fails ("Multiple top-level packages discovered: app, static, samples"). An empty list installs the
+# dependencies only; the app itself runs from the source folder via [tool.fastapi] above.
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools]
+packages = []
