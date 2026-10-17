@@ -1,0 +1,300 @@
+[
+ {
+  "id": "plot-basic",
+  "label": "Plot – the proposal's own example",
+  "text": "250 gaj corner plot DLF 1, north facing, 24 ft road, 6 per gaj, owner serious",
+  "expect": [
+   {
+    "intent": "save_listing",
+    "type": "plot",
+    "size_gaj": 250,
+    "corner": true,
+    "micro_market": "DLF Phase 1",
+    "facing": "north",
+    "road_width_ft": 24,
+    "price_per_gaj": 600000,
+    "price_total": 150000000,
+    "price_flexibility": "firm"
+   }
+  ]
+ },
+ {
+  "id": "broadcast-3",
+  "label": "Broadcast with 3 listings (must split)",
+  "text": "🔥 FRESH INVENTORY 🔥\n1. Sushant Lok 1, 3BHK builder floor, 2nd floor, 250 gy, park facing, 7.25 cr\n2. Sushant Lok 2, 4 BHK TF, stilt+4, lift, 8.1 cr negotiable\n3. DLF 3 plot 300 gaj west facing 5.5L/gaj\nCall Pankaj 9810012345",
+  "expect": [
+   {
+    "intent": "save_listing",
+    "type": "builder_floor",
+    "micro_market": "Sushant Lok 1",
+    "bedrooms": 3,
+    "floor_number": 2,
+    "size_gaj": 250,
+    "park_view": true,
+    "price_total": 72500000
+   },
+   {
+    "intent": "save_listing",
+    "type": "builder_floor",
+    "micro_market": "Sushant Lok 2",
+    "bedrooms": 4,
+    "floor_number": 3,
+    "lift": true,
+    "price_total": 81000000,
+    "price_flexibility": "some"
+   },
+   {
+    "intent": "save_listing",
+    "type": "plot",
+    "micro_market": "DLF Phase 3",
+    "size_gaj": 300,
+    "facing": "west",
+    "price_per_gaj": 550000,
+    "price_total": 165000000
+   }
+  ]
+ },
+ {
+  "id": "kothi-soft",
+  "label": "Old kothi with soft knowledge (Hinglish)",
+  "text": "South City 1 kothi 400 gaj, purani construction, east facing, 3.2 lakh per gaj. Owner ko urgent paisa chahiye, will drop 3% if closed this week. Power backup hai.",
+  "expect": [
+   {
+    "intent": "save_listing",
+    "type": "plot",
+    "micro_market": "South City 1",
+    "size_gaj": 400,
+    "vacant_or_built": "built",
+    "facing": "east",
+    "price_per_gaj": 320000,
+    "price_total": 128000000,
+    "price_flexibility": "high"
+   }
+  ]
+ },
+ {
+  "id": "rent-flat",
+  "label": "Apartment for rent",
+  "text": "2BHK semi furnished flat for rent Sector 54 Skyline Towers, tower B 7th floor, 1300 sq ft super, 55k per month, 1 car parking",
+  "expect": [
+   {
+    "intent": "save_listing",
+    "type": "apartment",
+    "purpose": "rent",
+    "micro_market": "Sector 54",
+    "bedrooms": 2,
+    "floor_number": 7,
+    "super_sqft": 1300,
+    "furnishing": "semi-furnished",
+    "price_total": 55000
+   }
+  ]
+ },
+ {
+  "id": "sqft-unit",
+  "label": "Plot in sq ft (unit conversion)",
+  "text": "DLF phase 4, 2700 sq ft plot, east facing, 5L/gaj, regular shape, 30 ft road",
+  "expect": [
+   {
+    "intent": "save_listing",
+    "type": "plot",
+    "micro_market": "DLF Phase 4",
+    "size_gaj": 300,
+    "facing": "east",
+    "price_per_gaj": 500000,
+    "price_total": 150000000,
+    "shape": "regular"
+   }
+  ]
+ },
+ {
+  "id": "price-suspicious",
+  "label": "Suspicious price (should be flagged, not trusted)",
+  "text": "Sector 57 plot 500 gaj north facing 85 per gaj corner",
+  "expect": [
+   {
+    "intent": "save_listing",
+    "type": "plot",
+    "micro_market": "Sector 57",
+    "size_gaj": 500,
+    "corner": true
+   }
+  ]
+ },
+ {
+  "id": "req-sharma",
+  "label": "Client requirement",
+  "text": "Client wants a 4 BHK floor in Sushant Lok, 7 to 8 cr, must be park facing. Prefers top floor, wife wants east facing.",
+  "expect": [
+   {
+    "intent": "save_requirement",
+    "type": "builder_floor",
+    "bedrooms": 4,
+    "budget_min": 70000000,
+    "budget_max": 80000000
+   }
+  ]
+ },
+ {
+  "id": "req-hinglish",
+  "label": "Requirement in Hinglish",
+  "text": "Malhotra ji ko DLF phase 2 ya 3 mein plot chahiye, 300 se 400 gaj, budget 18 cr tak. Corner ho to best hai. Decision unki wife lengi, 3 mahine mein lena hai.",
+  "expect": [
+   {
+    "intent": "save_requirement",
+    "type": "plot",
+    "budget_max": 180000000
+   }
+  ]
+ },
+ {
+  "id": "search-1",
+  "label": "Search",
+  "text": "find me a 3 BHK floor in Sushant Lok under 8 cr, park facing",
+  "expect": [
+   {
+    "intent": "search"
+   }
+  ]
+ },
+ {
+  "id": "search-2",
+  "label": "Follow-up: cheaper (run after a search)",
+  "text": "anything cheaper?",
+  "expect": [
+   {
+    "intent": "search"
+   }
+  ]
+ },
+ {
+  "id": "show-photos",
+  "label": "Follow-up: photos (run after a search)",
+  "text": "show the second one's photos",
+  "expect": [
+   {
+    "intent": "show"
+   }
+  ]
+ },
+ {
+  "id": "correction",
+  "label": "Correct a record in plain language",
+  "text": "Sushant Lok 2 wale floor ka price 6.1 cr kar do",
+  "expect": [
+   {
+    "intent": "update_listing"
+   }
+  ]
+ },
+ {
+  "id": "stale",
+  "label": "Freshness check",
+  "text": "which listings need confirming?",
+  "expect": [
+   {
+    "intent": "stale_check"
+   }
+  ]
+ },
+ {
+  "id": "still-avail",
+  "label": "Re-confirm a stale listing",
+  "text": "#2 still available, owner confirmed today",
+  "expect": [
+   {
+    "intent": "set_status"
+   }
+  ]
+ },
+ {
+  "id": "visit-note",
+  "label": "Visit note + follow-up task",
+  "text": "Mr. Kapoor visited the Golf Course Road floor today, he liked it but wants a lower price. Call the owner on Friday.",
+  "expect": [
+   {
+    "intent": "activity_log"
+   }
+  ]
+ },
+ {
+  "id": "p3-activity",
+  "label": "Reply to a 3-hour check-in (visit + follow-up)",
+  "text": "Visited the Golf Course Road floor with Mr. Kapoor, he liked it but wants a lower price. Will call the owner tomorrow about a discount.",
+  "expect": [
+   {
+    "intent": "activity_log"
+   }
+  ]
+ },
+ {
+  "id": "p3-activity-hinglish",
+  "label": "Check-in reply in Hinglish",
+  "text": "Do ghante mein Sushant Lok wale floor ka visit kiya Mr. Gupta ke saath, unko pasand aaya par wife ko park view chahiye. Owner ko friday ko call karna hai.",
+  "expect": [
+   {
+    "intent": "activity_log"
+   }
+  ]
+ },
+ {
+  "id": "p3-skip",
+  "label": "Skip a check-in",
+  "text": "skip",
+  "expect": [
+   {
+    "intent": "activity_log"
+   }
+  ]
+ },
+ {
+  "id": "p3-recall-1",
+  "label": "Recall: what the owner said",
+  "text": "What did the owner of the Golf Course Road floor say about price?",
+  "expect": [
+   {
+    "intent": "recall"
+   }
+  ]
+ },
+ {
+  "id": "p3-recall-2",
+  "label": "Recall: client discussion",
+  "text": "What did I discuss with Mr. Gupta last week?",
+  "expect": [
+   {
+    "intent": "recall"
+   }
+  ]
+ },
+ {
+  "id": "p3-snooze",
+  "label": "Snooze reminders",
+  "text": "don't ping me till 4 pm",
+  "expect": [
+   {
+    "intent": "settings"
+   }
+  ]
+ },
+ {
+  "id": "p3-interval",
+  "label": "Change reminder interval",
+  "text": "change to every 2 hours",
+  "expect": [
+   {
+    "intent": "settings"
+   }
+  ]
+ },
+ {
+  "id": "p3-eod",
+  "label": "On-demand end-of-day report",
+  "text": "give me today's summary",
+  "expect": [
+   {
+    "intent": "eod_report"
+   }
+  ]
+ }
+]

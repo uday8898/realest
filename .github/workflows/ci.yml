@@ -1,0 +1,21 @@
+name: tests
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  offline-tests:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+      - run: pip install -r requirements.txt
+      # These suites need no API keys: the AI layer is replaced by canned responses.
+      - run: |
+          for t in test_security test_engine test_phase3 test_phase4 test_share test_fast test_views; do
+            echo "== $t"; python tests/$t.py
+          done

@@ -1,0 +1,16 @@
+[project]
+name = "realest"
+version = "0.1.0"
+description = "The Zero Lag: AI property assistant for real estate brokers (FastAPI backend)"
+requires-python = ">=3.11"
+dependencies = [
+    "fastapi[standard]",
+    "openai>=1.50",
+    "python-multipart",
+    "python-dotenv",
+    "pypdf",
+    "httpx",
+]
+
+[tool.fastapi]
+entrypoint = "app.main:app"

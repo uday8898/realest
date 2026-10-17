@@ -1,0 +1,758 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#0a0a0b">
+<title>The Zero Lag · Broker Assistant</title>
+<link rel="icon" type="image/png" href="/brand/favicon.png">
+<script src="/config.js"></script>
+<script>try { document.documentElement.dataset.theme = localStorage.getItem('theme') || 'dark'; } catch (e) { document.documentElement.dataset.theme = 'dark'; }</script>
+<style>
+  /* Flat monochrome. No gradients, no emoji, no external requests (system fonts, one 7 KB logo). */
+  :root {
+    --bg: #0a0a0b; --surface: #111113; --surface2: #17171a; --line: #26262c; --line2: #34343c;
+    --ink: #f2f2f4; --muted: #8e8e98; --dim: #5e5e68;
+    --grid: rgba(255,255,255,.06); --grid2: rgba(255,255,255,.11);
+    --me-bg: #ececef; --me-ink: #0a0a0b;
+    --ok: #5ee08f; --warn: #f2b84b; --bad: #f2675f;
+    --btn-bg: #f2f2f4; --btn-ink: #0a0a0b; --shadow: 0 16px 40px rgba(0,0,0,.55);
+    --mono: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  }
+  :root[data-theme="light"] {
+    --bg: #f4f4f5; --surface: #ffffff; --surface2: #f0f0f2; --line: #dcdce1; --line2: #c4c4cc;
+    --ink: #0a0a0b; --muted: #61616b; --dim: #93939d;
+    --grid: rgba(10,10,11,.06); --grid2: rgba(10,10,11,.12);
+    --me-bg: #0a0a0b; --me-ink: #f4f4f5;
+    --ok: #0f8a4a; --warn: #a76a00; --bad: #c4352e;
+    --btn-bg: #0a0a0b; --btn-ink: #f4f4f5; --shadow: 0 16px 40px rgba(10,10,11,.16);
+  }
+  * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+  html, body { height: 100%; }
+  body { margin: 0; font: 15px/1.55 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; color: var(--ink); background: var(--bg); display: flex; flex-direction: column; font-variant-numeric: tabular-nums; }
+  /* technical grid: minor lines every 32px, major every 160px; fixed layer so it never repaints */
+  body::before { content: ""; position: fixed; inset: 0; z-index: -1; pointer-events: none;
+    background-image: linear-gradient(var(--grid2) 1px, transparent 1px), linear-gradient(90deg, var(--grid2) 1px, transparent 1px),
+                      linear-gradient(var(--grid) 1px, transparent 1px), linear-gradient(90deg, var(--grid) 1px, transparent 1px);
+    background-size: 160px 160px, 160px 160px, 32px 32px, 32px 32px; background-position: -1px -1px; }
+  button, select, input, textarea { font: inherit; color: inherit; }
+  button { cursor: pointer; }
+  svg.i { width: 18px; height: 18px; fill: none; stroke: currentColor; stroke-width: 1.6; stroke-linecap: square; stroke-linejoin: miter; flex: none; }
+  svg.s { width: 13px; height: 13px; }
+  .mono { font-family: var(--mono); }
+
+  /* ---------- header ---------- */
+  header { display: flex; align-items: center; gap: 12px; padding: 10px 18px; border-bottom: 1px solid var(--line); background: var(--surface); flex-wrap: wrap; }
+  .brand { display: flex; align-items: center; gap: 12px; flex: 1; min-width: 200px; }
+  .mark { height: 36px; width: auto; display: block; flex: none; }
+  body.busy .mark { animation: breathe .9s ease-in-out infinite; }
+  @keyframes breathe { 50% { opacity: .35; } }
+  .word { font-weight: 300; font-size: 15px; line-height: 1.15; white-space: nowrap; }
+  .word small { display: block; font: 500 13px var(--mono); color: var(--muted); margin-top: 3px; }
+  .lat { font: 600 13px var(--mono); padding: 5px 10px; border: 1px solid var(--line2); color: var(--muted); }
+  .lat.fast { color: var(--ok); border-color: var(--ok); } .lat.slow { color: var(--warn); border-color: var(--warn); }
+  .stat { display: inline-flex; align-items: center; gap: 14px; font: 500 13px var(--mono); color: var(--muted); white-space: nowrap; }
+  .dot { display: inline-block; width: 7px; height: 7px; background: var(--dim); margin-right: 7px; } .dot.on { background: var(--ok); }
+  header select { background: var(--surface2); border: 1px solid var(--line2); padding: 7px 12px; outline: none; max-width: 260px; min-width: 0; border-radius: 0; }
+  header select option { color: #111; }
+  .hbtn { background: var(--surface2); border: 1px solid var(--line2); padding: 6px 10px; display: grid; place-items: center; }
+  .hbtn:hover, .chip:hover, .btn:hover, .ic:hover { border-color: var(--ink); }
+  .seg { display: none; border: 1px solid var(--line2); }
+  .seg button { background: none; border: 0; padding: 6px 16px; color: var(--muted); font: 600 13px var(--mono); }
+  .seg button.on { background: var(--btn-bg); color: var(--btn-ink); }
+  details.menu { position: relative; } details.menu > summary { list-style: none; } details.menu > summary::-webkit-details-marker { display: none; }
+  details.menu .pop { position: absolute; right: 0; top: 44px; z-index: 20; width: 290px; padding: 14px; background: var(--surface); border: 1px solid var(--line2); box-shadow: var(--shadow); display: grid; gap: 10px; }
+  .pop select { width: 100%; max-width: none; } .pop .m { color: var(--muted); font-size: 12px; }
+  .lockup { width: 100%; max-width: 190px; height: auto; margin: 2px auto 4px; display: block; }
+  :root[data-theme="light"] .lockup.dk, :root:not([data-theme="light"]) .lockup.lt { display: none; }
+  .pop hr { border: 0; border-top: 1px solid var(--line); margin: 2px 0; width: 100%; }
+
+  /* ---------- layout ---------- */
+  main { flex: 1; display: grid; grid-template-columns: minmax(360px, 500px) minmax(0, 1fr); min-height: 0; }
+  #chat { display: flex; flex-direction: column; min-height: 0; min-width: 0; border-right: 1px solid var(--line); }
+  #side { display: flex; flex-direction: column; min-height: 0; min-width: 0; }
+  @media (max-width: 860px) {
+    main { grid-template-columns: minmax(0, 1fr); } .seg { display: flex; } body #side { display: none; }
+    body.dataview #chat { display: none; } body.dataview #side { display: flex; }
+    .brand { flex-basis: 100%; } .stat { display: none; }
+    header { gap: 8px; padding: 8px 12px; } header select { flex: 1 1 90px; max-width: none; }
+  }
+
+  /* ---------- briefing ---------- */
+  #brief { padding: 16px 18px 6px; }
+  .bcard { border: 1px solid var(--line2); padding: 14px 16px; background: var(--surface); }
+  .bh { display: flex; justify-content: space-between; align-items: baseline; gap: 10px; flex-wrap: wrap; }
+  .hi { font-weight: 600; font-size: 16px; } .bs { font: 500 13px var(--mono); color: var(--muted); }
+  .bi { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 12px; }
+  .bi .chip { white-space: normal; text-align: left; line-height: 1.35; max-width: 100%; border-color: var(--line2); }
+  .bi .chip::before { content: ""; display: inline-block; width: 6px; height: 6px; background: var(--warn); margin-right: 8px; vertical-align: 1px; }
+  .calm { color: var(--muted); font-size: 12.5px; margin-top: 8px; }
+
+  /* ---------- chat ---------- */
+  #msgs { flex: 1; overflow-y: auto; padding: 12px 18px; display: flex; flex-direction: column; gap: 10px; overscroll-behavior: contain; }
+  .b { max-width: 88%; padding: 10px 13px; white-space: pre-wrap; overflow-wrap: anywhere; animation: pop .12s ease-out both; }
+  @keyframes pop { from { opacity: 0; transform: translateY(3px); } }
+  .b.me { align-self: flex-end; background: var(--me-bg); color: var(--me-ink); }
+  .b.bot { align-self: flex-start; background: var(--surface); border: 1px solid var(--line2); }
+  .b img { max-width: 100%; display: block; margin-top: 6px; }
+  .b .tr { font-style: italic; opacity: .7; font-size: 12.5px; margin-top: 3px; }
+  .meta { display: flex; gap: 14px; align-items: center; margin-top: 7px; font: 500 13px var(--mono); color: var(--dim); }
+  .meta a { color: var(--muted); cursor: pointer; display: inline-flex; align-items: center; gap: 5px; } .meta a:hover { color: var(--ink); }
+  .think { display: inline-flex; align-items: center; gap: 8px; color: var(--muted); font: 500 13px var(--mono); }
+  .think i { width: 6px; height: 6px; background: var(--ink); animation: blink 1s infinite; } .think i:nth-child(2) { animation-delay: .15s; } .think i:nth-child(3) { animation-delay: .3s; }
+  @keyframes blink { 0%, 100% { opacity: .2; } 50% { opacity: 1; } }
+  .tpl { font: 500 13px var(--mono); color: var(--warn); border: 1px solid var(--warn); padding: 1px 7px; display: inline-block; margin-bottom: 5px; }
+  .att { font: 500 13px var(--mono); margin-top: 5px; opacity: .8; }
+
+  /* ---------- composer ---------- */
+  #bar { padding: 8px 18px 16px; }
+  #sugg { display: flex; gap: 6px; overflow-x: auto; padding: 2px 0 10px; scrollbar-width: none; } #sugg::-webkit-scrollbar { display: none; }
+  .chip { white-space: nowrap; background: var(--surface); color: var(--ink); border: 1px solid var(--line2); padding: 6px 12px; font-size: 12.5px; }
+  .chip.hot { background: var(--btn-bg); color: var(--btn-ink); border-color: var(--btn-bg); }
+  #files { font: 500 13px var(--mono); color: var(--muted); padding: 0 2px 6px; }
+  #row { display: flex; gap: 4px; align-items: flex-end; border: 1px solid var(--line2); padding: 5px; background: var(--surface); transition: border-color .12s; }
+  #row:focus-within { border-color: var(--ink); }
+  #txt { flex: 1; border: 0; background: none; resize: none; outline: none; padding: 9px 8px; max-height: 120px; min-width: 0; overflow-y: hidden; }
+  #txt::placeholder { color: var(--dim); }
+  .ic { width: 40px; height: 40px; border: 1px solid transparent; background: none; color: var(--muted); display: grid; place-items: center; flex: none; }
+  .ic:hover { color: var(--ink); }
+  .ic.send { background: var(--btn-bg); color: var(--btn-ink); } .ic.send:hover { opacity: .85; border-color: transparent; }
+  .ic.rec { background: var(--bad); color: #fff; animation: blink 1s infinite; }
+
+  /* ---------- side panel ---------- */
+  .tabs { display: flex; overflow-x: auto; border-bottom: 1px solid var(--line); scrollbar-width: none; padding: 0 12px; background: var(--surface); } .tabs::-webkit-scrollbar { display: none; }
+  .tabs button { background: none; border: 0; padding: 13px 14px; color: var(--muted); white-space: nowrap; position: relative; font: 600 13px var(--mono); }
+  .tabs button.on { color: var(--ink); }
+  .tabs button.on::after { content: ""; position: absolute; left: 14px; right: 14px; bottom: -1px; height: 2px; background: var(--ink); }
+  .tabs button[hidden] { display: none; }
+  #pane > * { min-width: 0; }
+  #pane { flex: 1; overflow-y: auto; overflow-x: hidden; padding: 16px 18px; display: flex; flex-direction: column; gap: 10px; overscroll-behavior: contain; }
+  .card { border: 1px solid var(--line2); padding: 12px 14px; background: var(--surface); }
+  .card .t { font-weight: 600; } .card .m { color: var(--muted); font-size: 12.5px; margin-top: 4px; }
+  .tag { display: inline-block; font: 600 13px var(--mono); padding: 1px 7px; margin-right: 6px; border: 1px solid var(--line2); color: var(--muted); }
+  .tag.ok { color: var(--ok); border-color: var(--ok); } .tag.warn { color: var(--warn); border-color: var(--warn); } .tag.bad { color: var(--bad); border-color: var(--bad); }
+  .price { font-family: var(--mono); font-weight: 700; color: var(--ink); }
+  .sec { font: 600 13px var(--mono); margin: 12px 0 0; color: var(--muted); }
+  .btn { font: 600 13px var(--mono); padding: 6px 12px; border: 1px solid var(--line2); background: var(--surface2); color: var(--ink); text-decoration: none; display: inline-flex; align-items: center; gap: 6px; }
+  .btn.on { color: var(--ok); border-color: var(--ok); }
+  .btn.primary { background: var(--btn-bg); color: var(--btn-ink); border-color: var(--btn-bg); } .btn[disabled] { opacity: .4; cursor: not-allowed; }
+  .frm { display: grid; gap: 8px; }
+  .frm input, .frm textarea, .frm select, .sheet input, .sheet textarea { border: 1px solid var(--line2); padding: 9px 11px; background: var(--surface2); width: 100%; outline: none; border-radius: 0; }
+  .frm input:focus, .frm textarea:focus, .sheet input:focus, .sheet textarea:focus { border-color: var(--ink); }
+  .frm select option { color: #111; }
+  table { border-collapse: collapse; width: 100%; font-size: 12.5px; } th, td { text-align: left; padding: 8px 6px; border-bottom: 1px solid var(--line); } th { color: var(--muted); font: 600 13px var(--mono); }
+  .empty { color: var(--muted); text-align: center; padding: 40px 10px; font: 500 13px var(--mono); }
+  .row { display: flex; gap: 12px; color: var(--muted); font-size: 12.5px; padding: 6px 0; border-bottom: 1px solid var(--line); } .row b { color: var(--ink); font: 600 13px var(--mono); min-width: 130px; }
+  .okmsg { color: var(--ok); } .errmsg { color: var(--bad); }
+  .demob { display: flex; gap: 6px; flex-wrap: wrap; }
+
+  /* ---------- data views ---------- */
+  .chip, .btn, .hbtn, .ic, .pills button, .lhead, .seg button { transition: background .14s ease, border-color .14s ease, color .14s ease, opacity .14s ease, transform .08s ease; }
+  .chip:active, .btn:active, .pills button:active { transform: translateY(1px); }
+  :focus-visible { outline: 2px solid var(--ink); outline-offset: 2px; }
+  #msgs { scroll-behavior: smooth; }
+  #pane.fade > * { animation: fadein .18s ease-out both; } @keyframes fadein { from { opacity: 0; transform: translateY(4px); } }
+  .cnt { font: 600 13px var(--mono); margin-left: 7px; color: var(--dim); } .tabs button.on .cnt { color: var(--muted); }
+  .tool { display: grid; grid-template-columns: minmax(0, 1fr); gap: 10px; position: sticky; top: -16px; z-index: 5; background: var(--bg); padding: 16px 18px 10px; margin: -16px -18px 0; border-bottom: 1px solid var(--line); }
+  .tool .top { display: flex; gap: 8px; }
+  .tool input, .tool select { border: 1px solid var(--line2); background: var(--surface); padding: 8px 11px; outline: none; border-radius: 0; min-width: 0; }
+  .tool input { flex: 1; } .tool input:focus, .tool select:focus { border-color: var(--ink); } .tool select option { color: #111; }
+  .pills { display: flex; gap: 0; flex-wrap: wrap; }
+  .pills button { background: var(--surface); border: 1px solid var(--line2); margin: 0 -1px -1px 0; padding: 5px 11px; color: var(--muted); font: 600 13px var(--mono); }
+  .pills button.on { background: var(--btn-bg); color: var(--btn-ink); border-color: var(--btn-bg); position: relative; z-index: 1; }
+  .pills button i { font-style: normal; opacity: .6; margin-left: 5px; }
+  .pillrow { display: flex; gap: 14px; flex-wrap: wrap; align-items: center; }
+  .sum { font: 500 13px var(--mono); color: var(--muted); }
+  .ghead { display: flex; justify-content: space-between; align-items: baseline; font: 600 13px var(--mono); color: var(--muted); padding: 14px 2px 6px; border-bottom: 1px solid var(--line); margin-bottom: 8px; }
+  .ghead:first-child { padding-top: 4px; } .ghead span { color: var(--dim); }
+  .lrow { border: 1px solid var(--line2); background: var(--surface); margin-bottom: 8px; content-visibility: auto; contain-intrinsic-size: auto 62px; }
+  .lrow.needs { box-shadow: inset 2px 0 0 var(--warn); } .lrow.dim { opacity: .55; }
+  .lhead { display: grid; grid-template-columns: 38px minmax(0, 1fr) auto 14px; gap: 10px; align-items: center; width: 100%; text-align: left; padding: 11px 14px; background: none; border: 0; min-height: 66px; }
+  .lhead:hover { background: var(--surface2); }
+  .lid { font: 500 13px var(--mono); color: var(--dim); }
+  .lmain { display: grid; gap: 1px; min-width: 0; }
+  .lt { font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .ls { color: var(--muted); font-size: 12.5px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .lright { display: grid; justify-items: end; gap: 3px; } .lright .tag { margin: 0; }
+  .chev { width: 12px; height: 12px; fill: none; stroke: var(--muted); stroke-width: 1.8; transition: transform .2s ease; }
+  .lrow.lopen .chev { transform: rotate(180deg); }
+  .ldet { display: grid; grid-template-rows: 0fr; transition: grid-template-rows .22s ease; }
+  .lrow.lopen .ldet { grid-template-rows: 1fr; }
+  .ldin { overflow: hidden; min-height: 0; }
+  .dbody { padding: 12px 14px 14px; border-top: 1px solid var(--line); display: grid; gap: 12px; }
+  .kv { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px 18px; }
+  .kv div { min-width: 0; } .kv small { display: block; font: 600 13px var(--mono); color: var(--dim); }
+  .kv span { overflow-wrap: anywhere; }
+  .note { color: var(--muted); font-size: 12.5px; border-left: 2px solid var(--line2); padding-left: 10px; }
+  .acts { display: flex; gap: 6px; flex-wrap: wrap; }
+  .mrow { display: grid; grid-template-columns: 1fr auto; gap: 2px 12px; padding: 8px 0; border-top: 1px solid var(--line); font-size: 12.5px; } .mrow:first-child { border-top: 0; }
+  .mrow small { grid-column: 1 / -1; color: var(--muted); }
+  .skel { height: 58px; border: 1px solid var(--line); background: var(--surface); margin-bottom: 8px; animation: blink 1.1s ease-in-out infinite; }
+  .tl { display: grid; grid-template-columns: 56px minmax(0, 1fr); gap: 12px; padding: 9px 0; border-bottom: 1px solid var(--line); font-size: 13px; } .tl time { font: 500 13px var(--mono); color: var(--dim); padding-top: 2px; }
+  .tl small { display: block; color: var(--muted); font-size: 12px; margin-top: 2px; }
+  .fu { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 12px; align-items: baseline; padding: 9px 12px; border: 1px solid var(--line2); background: var(--surface); margin-bottom: 8px; }
+  .fu.done { opacity: .5; text-decoration: line-through; } .fu .tag { margin: 0; }
+
+  /* ---------- share modal ---------- */
+  #lock { position: fixed; inset: 0; background: var(--bg); z-index: 50; display: flex; align-items: center; justify-content: center; padding: 12px; }
+  #lock[hidden] { display: none; }
+  #modal { position: fixed; inset: 0; background: rgba(0,0,0,.65); display: flex; align-items: center; justify-content: center; z-index: 30; padding: 12px; }
+  #modal[hidden] { display: none; }
+  .sheet { background: var(--surface); border: 1px solid var(--line2); padding: 20px; width: min(540px, 100%); max-height: 94vh; overflow-y: auto; display: grid; gap: 12px; box-shadow: var(--shadow); animation: pop .14s ease-out both; }
+  .sheet h3 { margin: 0; font: 600 13px var(--mono); } .sheet .m { color: var(--muted); font-size: 12.5px; }
+  @media (prefers-reduced-motion: reduce) { *, *::before, *::after { animation: none !important; transition: none !important; } }
+
+  /* ---------- friendly overrides: rounded, soft, plain ---------- */
+  :root { --r: 12px; --ok-bg: rgba(94,224,143,.14); --warn-bg: rgba(242,184,75,.15); --bad-bg: rgba(242,103,95,.15); --line: #2a2a31; --line2: #30303a; }
+  :root[data-theme="light"] { --ok-bg: rgba(15,138,74,.10); --warn-bg: rgba(167,106,0,.12); --bad-bg: rgba(196,53,46,.10); --line: #e4e4e8; --line2: #d6d6dc; }
+  .word { font-weight: 600; font-size: 17px; line-height: 1.15; }
+  .word small { font-weight: 400; font-size: 12.5px; color: var(--muted); margin-top: 1px; }
+  #lat, #health { display: none; }
+  .hbtn, header select, .btn, .chip, .tool input, .tool select, .frm input, .frm textarea, .frm select, .sheet input, .sheet textarea, .seg, .pop { border-radius: var(--r); }
+  .btn, .chip { font-weight: 500; font-size: 13.5px; padding: 8px 14px; }
+  .btn.primary, .chip.hot { font-weight: 600; }
+  .bcard, .card, .lrow, .sheet, details.menu .pop { border-radius: 14px; border-color: var(--line); }
+  .lrow { margin-bottom: 10px; } .lrow.needs { box-shadow: none; }
+  .lrow.needs .lt::before { content: ""; display: inline-block; width: 8px; height: 8px; border-radius: 50%; background: var(--warn); margin-right: 8px; vertical-align: 1px; }
+  .b { border-radius: 18px; padding: 11px 15px; } .b.me { border-bottom-right-radius: 5px; } .b.bot { border-bottom-left-radius: 5px; border-color: var(--line); }
+  #row { border-radius: 20px; border-color: var(--line2); padding: 6px; } .ic { border-radius: 50%; } .ic.send { width: 42px; height: 42px; }
+  .seg { padding: 3px; } .seg button { border-radius: 9px; font-size: 14px; font-weight: 500; padding: 6px 18px; }
+  .tabs { padding: 0 10px; } .tabs button { font-size: 14.5px; font-weight: 500; padding: 14px 12px; }
+  .tabs button.on { font-weight: 600; } .cnt { font-size: 12px; font-weight: 500; }
+  .tag { border: 0; background: var(--surface2); color: var(--muted); border-radius: 99px; padding: 3px 10px; font-size: 12.5px; font-weight: 600; }
+  .tag.ok { background: var(--ok-bg); color: var(--ok); } .tag.warn { background: var(--warn-bg); color: var(--warn); } .tag.bad { background: var(--bad-bg); color: var(--bad); }
+  .tpl { border: 0; background: var(--warn-bg); border-radius: 99px; padding: 3px 10px; font-size: 12.5px; }
+  .pills { border: 1px solid var(--line2); border-radius: var(--r); overflow: hidden; }
+  .pills button { border: 0; border-right: 1px solid var(--line2); margin: 0; padding: 7px 13px; font-size: 13.5px; font-weight: 500; }
+  .pills button:last-child { border-right: 0; } .pills button.on { font-weight: 600; }
+  .pillrow { gap: 10px; }
+  .sum, .bs { font-size: 13.5px; font-weight: 400; color: var(--muted); }
+  .hi { font-size: 19px; } .bcard { padding: 18px 20px; } .bh { align-items: center; }
+  .bi { margin-top: 14px; gap: 8px; } .bi .chip { border-radius: 12px; padding: 9px 14px; } .bi .chip::before { border-radius: 50%; width: 7px; height: 7px; }
+  .ghead { font-size: 14px; font-weight: 600; color: var(--ink); border-bottom: 0; padding: 18px 2px 8px; margin: 0; } .ghead span { font-weight: 400; color: var(--muted); font-size: 13px; }
+  .sec { font-size: 14px; font-weight: 600; color: var(--ink); margin: 16px 0 2px; }
+  .lhead { min-height: 72px; padding: 13px 16px; } .lid { font-size: 12.5px; }
+  .lt { font-size: 15.5px; } .ls { font-size: 13.5px; }
+  .kv small { font-size: 12.5px; font-weight: 500; color: var(--muted); margin-bottom: 1px; } .kv span { font-size: 14.5px; }
+  .note { font-size: 13.5px; border-radius: 0; }
+  .price { font-weight: 700; font-size: 15.5px; }
+  .empty { font-size: 14.5px; font-weight: 400; padding: 46px 12px; line-height: 1.7; }
+  .skel { border-radius: 14px; height: 72px; }
+  .tl { grid-template-columns: 52px minmax(0, 1fr); } .tl time { font-size: 13px; }
+  .fu { border-radius: 12px; border-color: var(--line); padding: 11px 14px; }
+  .meta { font-size: 12.5px; font-weight: 400; } .meta a { font-weight: 500; }
+  .think { font-size: 14px; font-weight: 400; gap: 6px; } .think i { border-radius: 50%; }
+  table { font-size: 14px; } th { font-size: 13px; font-weight: 500; text-transform: none; } td, th { padding: 10px 6px; }
+  .tool { padding-bottom: 12px; } .tool input, .tool select { padding: 10px 13px; font-size: 14.5px; }
+  .sheet h3 { font-size: 17px; font-weight: 600; } .sheet .m, .pop .m { font-size: 13.5px; }
+  .demob { gap: 8px; } .dot { border-radius: 50%; }
+  #bar { padding-bottom: 18px; } #txt { font-size: 15px; padding: 10px 10px; }
+  /* narrow screens: let titles wrap instead of cutting them off; size the toolbar to its content */
+  .lt { white-space: normal; overflow: visible; text-overflow: clip; line-height: 1.3; }
+  .tool .top { flex-wrap: nowrap; } .tool .top input { flex: 1 1 110px; } .tool .top select { flex: 0 0 auto; width: auto; max-width: 48%; }
+  .pills { width: fit-content; max-width: 100%; } .pillrow { gap: 8px; }
+  .lhead { grid-template-columns: 28px minmax(0, 1fr) auto 12px; gap: 8px; padding: 13px 14px; } .price { font-size: 15px; }
+  .lright { align-self: start; padding-top: 2px; } .lid { align-self: start; padding-top: 3px; } .chev { align-self: start; margin-top: 5px; }
+</style>
+</head>
+<body>
+<header>
+  <div class="brand">
+    <img class="mark" src="/brand/mark.webp" alt="The Zero Lag" width="32" height="36" decoding="async">
+    <div class="word">The Zero Lag<small>Your property assistant</small></div>
+  </div>
+  <div class="seg" id="seg"><button data-v="chat" class="on">Chat</button><button data-v="data">Data</button></div>
+  <span class="lat" id="lat" title="Time taken to answer your last message">READY</span>
+  <span class="stat" id="health"></span>
+  <select id="broker" title="Each broker's data is private"></select>
+  <details class="menu" id="menu">
+    <summary class="hbtn" aria-label="Menu"><svg class="i" viewBox="0 0 24 24"><path d="M4 7h16M4 12h16M4 17h16"/></svg></summary>
+    <div class="pop">
+      <img class="lockup dk" src="/brand/lockup-dark.webp" alt="The Zero Lag. For a faster world." loading="lazy" decoding="async" width="190" height="253">
+      <img class="lockup lt" src="/brand/lockup-light.webp" alt="The Zero Lag. For a faster world." loading="lazy" decoding="async" width="190" height="253">
+      <hr>
+      <select id="samples"><option value="">Try an example message</option></select>
+      <div class="m" id="cfg"></div>
+      <div class="m" id="conn"></div>
+      <div class="m" style="margin-top:2px">Demo tools</div>
+      <div class="demob"><button class="btn" data-trig="ping">Send a check-in</button><button class="btn" data-trig="eod">Send day summary prompt</button><button class="btn" data-trig="tasks">Send reminders</button></div>
+      <hr>
+      <button class="btn" id="theme">Light mode</button>
+      <button class="btn" id="reset">Reset demo data</button>
+    </div>
+  </details>
+</header>
+<main>
+  <section id="chat">
+    <div id="brief"></div>
+    <div id="msgs"></div>
+    <div id="bar">
+      <div id="sugg"></div>
+      <div id="files"></div>
+      <div id="row">
+        <button class="ic" id="attach" title="Attach photo, screenshot or PDF" aria-label="Attach"><svg class="i" viewBox="0 0 24 24"><path d="m21 12.5-8.3 8.3a5 5 0 0 1-7-7l8.5-8.5a3.3 3.3 0 0 1 4.7 4.7l-8.5 8.5a1.7 1.7 0 0 1-2.4-2.4l7.8-7.8"/></svg></button>
+        <input type="file" id="file" accept="image/*,application/pdf" multiple hidden>
+        <textarea id="txt" rows="1" placeholder="Type a message" aria-label="Message"></textarea>
+        <button class="ic" id="mic" title="Voice note (Hindi, English, Hinglish)" aria-label="Record voice note"><svg class="i" viewBox="0 0 24 24"><rect x="9" y="3" width="6" height="11"/><path d="M5 11a7 7 0 0 0 14 0M12 18v3"/></svg></button>
+        <button class="ic send" id="send" title="Send" aria-label="Send"><svg class="i" viewBox="0 0 24 24"><path d="M4 12h15M13 6l6 6-6 6"/></svg></button>
+      </div>
+    </div>
+  </section>
+  <aside id="side">
+    <div class="tabs">
+      <button data-tab="listings" class="on">Properties<span class="cnt"></span></button>
+      <button data-tab="reqs">Client needs<span class="cnt"></span></button>
+      <button data-tab="notes">Notes<span class="cnt"></span></button>
+      <button data-tab="groups">Groups<span class="cnt"></span></button>
+      <button data-tab="history">History<span class="cnt"></span></button>
+      <button data-tab="admin" id="adminTab" hidden>Team</button>
+    </div>
+    <div id="pane"></div>
+  </aside>
+</main>
+<div id="lock" hidden>
+  <div class="sheet">
+    <h3>Enter your access code</h3>
+    <div class="m">This workspace is private. Ask the owner for the access code.</div>
+    <input id="lockkey" type="password" autocomplete="current-password" placeholder="Access code">
+    <div id="lockerr" class="m errmsg"></div>
+    <button class="btn primary" id="lockgo">Open</button>
+  </div>
+</div>
+<div id="modal" hidden>
+  <div class="sheet">
+    <h3>Send on WhatsApp</h3>
+    <div id="mnote" class="m"></div>
+    <input id="mto" placeholder="WhatsApp number, e.g. +91 98xxxxxxxx" inputmode="tel" autocomplete="off">
+    <div><button class="btn" id="mme">Send to me</button></div>
+    <textarea id="mtext" rows="10"></textarea>
+    <div style="display:flex;gap:8px;flex-wrap:wrap">
+      <button class="btn primary" id="msend">Send from business number</button>
+      <button class="btn" id="mwa">Open in WhatsApp</button>
+      <button class="btn" id="mclose">Close</button>
+    </div>
+    <div id="mstat" class="m"></div>
+  </div>
+</div>
+<script>
+const $ = s => document.querySelector(s);
+// Backend address (empty = same host). On Vercel it is written into /config.js at build time from API_BASE.
+const API = (window.API_BASE || '').replace(/\/$/, '');
+const getKey = () => { try { return localStorage.getItem('accessKey') || ''; } catch (e) { return ''; } };
+const asset = u => (u && u.startsWith('/uploads/')) ? API + u : u;
+let lockShown = false;
+function showLock() { if (lockShown) return; lockShown = true; $('#lock').hidden = false; setTimeout(() => $('#lockkey').focus(), 50); }
+const _fetch = window.fetch.bind(window);
+window.fetch = (url, opts = {}) => {
+  if (typeof url === 'string' && url.startsWith('/api/')) {
+    opts = {...opts, headers: {...(opts.headers || {}), 'x-access-key': getKey()}};
+    return _fetch(API + url, opts).then(r => { if (r.status === 401) showLock(); return r; });
+  }
+  return _fetch(url, opts);
+};
+async function download(url, name) {
+  const r = await fetch(url); if (!r.ok) return;
+  const a = document.createElement('a'); a.href = URL.createObjectURL(await r.blob()); a.download = name; a.click(); setTimeout(() => URL.revokeObjectURL(a.href), 4000);
+}
+let lastId = 0, broker = localStorage.getItem('broker') || 'rohit', tab = 'listings', state = null, files = [], rec = null, chunks = [], samples = [];
+const esc = s => String(s).replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const fmt = s => esc(s).replace(/\*(.+?)\*/g, '<b>$1</b>');
+const money = (r, rent) => r == null ? '?' : rent ? '₹' + Math.round(r).toLocaleString('en-IN') + '/mo' : r >= 1e7 ? +(r/1e7).toFixed(2) + ' cr' : r >= 1e5 ? +(r/1e5).toFixed(2) + ' lakh' : '₹' + Math.round(r);
+const post = (url, body) => fetch(url, {method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify(body)});
+const secs = ms => ms < 1000 ? '0.' + String(Math.max(Math.round(ms / 10), 1)).padStart(2, '0') + 's' : (ms / 1000).toFixed(1) + 's';
+const STATUS = {available: 'Available', stale: 'Check needed', under_negotiation: 'In talks', on_hold: 'On hold', sold: 'Sold', rented: 'Rented', open: 'Open', closed: 'Closed'};
+const FLEX = {firm: 'Firm price', some: 'Some room', high: 'Very flexible'};
+const ICON_SHARE = '<svg class="i s" viewBox="0 0 24 24"><path d="M7 17 17 7M8 7h9v9"/></svg>';
+
+function bubble(role, text, media = [], ms = null, fast = false) {
+  const d = document.createElement('div'); d.className = 'b ' + role;
+  let h = media.some(m => m.kind === 'template') ? '<div class="tpl">Sent as template, outside 24h window</div>' : '';
+  h += text ? fmt(text) : '';
+  for (const m of media) {
+    if (m.kind === 'image') h += `<img src="${asset(m.url)}" alt="">`;
+    if (m.kind === 'audio') h += `<div class="att">Voice note</div><div class="tr">“${esc(m.transcript || '')}”</div>`;
+    if (m.kind === 'pdf') h += `<div class="att">PDF · ${esc(m.name || 'document.pdf')}</div>`;
+  }
+  d.innerHTML = h || '…';
+  if (role === 'bot' && text) {
+    d.dataset.text = text;
+    d.insertAdjacentHTML('beforeend', `<div class="meta"><a onclick="shareReply(this.closest('.b').dataset.text)">${ICON_SHARE} WhatsApp</a>${ms != null ? `<span>${fast ? 'Instant' : 'Replied in ' + secs(ms)}</span>` : ''}</div>`);
+  }
+  $('#msgs').appendChild(d); $('#msgs').scrollTop = 1e9; return d;
+}
+
+function setLat(ms, fast) { const el = $('#lat'); el.textContent = secs(ms).toUpperCase(); el.className = 'lat ' + (fast || ms < 600 ? 'fast' : ms > 4000 ? 'slow' : ''); }
+
+async function loadAll() {
+  const [st, br] = await Promise.all([fetch('/api/state?broker_id=' + broker).then(r => r.json()), fetch('/api/briefing?broker_id=' + broker).then(r => r.json())]);
+  state = st; return br;
+}
+async function load() {
+  builtTab = null; $('#pane').innerHTML = skel(6);
+  const br = await loadAll(); $('#msgs').innerHTML = ''; $('#msgs').style.scrollBehavior = 'auto';
+  state.messages.forEach(m => bubble(m.role === 'broker' ? 'me' : 'bot', m.text, m.media));
+  $('#msgs').style.scrollBehavior = '';
+  lastId = state.messages.reduce((a, m) => Math.max(a, m.id), 0);
+  renderBrief(br); renderSide(); defaultChips();
+}
+async function refresh() { const br = await loadAll(); renderBrief(br); renderSide(); }
+
+function renderBrief(b) {
+  const items = b.items.map(i => `<button class="chip" data-send="${esc(i.send)}">${esc(i.text)}</button>`).join('');
+  $('#brief').innerHTML = `<div class="bcard"><div class="bh"><span class="hi">${esc(b.greeting)}</span><span class="bs">${b.stats.live} properties · ${b.stats.open_requirements} client needs</span></div>` +
+    (items ? `<div class="calm" style="margin-top:10px">Here is what needs you today:</div><div class="bi">${items}</div>` : '<div class="calm">You are all caught up. Nothing needs your attention right now.</div>') + '</div>';
+  document.querySelectorAll('#brief [data-send]').forEach(c => c.onclick = () => sendText(c.dataset.send));
+}
+
+function chips(list) {
+  const box = $('#sugg'); box.innerHTML = '';
+  list.forEach(s => {
+    const b = document.createElement('button'); b.className = 'chip' + (s.share ? ' hot' : ''); b.textContent = s.label;
+    b.onclick = () => s.share ? shareMany(s.share) : s.fill != null ? (($('#txt').value = s.fill), autosize(), $('#txt').focus()) : sendText(s.send);
+    box.appendChild(b);
+  });
+}
+function defaultChips() {
+  chips([{label: 'Find a 3 BHK floor under 8 crore', send: 'find me a 3 BHK floor in Sushant Lok under 8 cr, park facing'},
+         {label: 'Which properties need a check?', send: 'which listings need confirming?'},
+         {label: 'My follow-ups', send: 'my follow-ups'}, {label: 'Today’s summary', send: 'today’s summary'}]);
+}
+
+// ---------- structured side panel ----------
+const ui = {q: '', type: 'all', view: 'all', sort: 'new', open: new Set(), reqOpen: new Set()};
+let builtTab = null;
+const TYPE_NAMES = {plot: 'Plots', builder_floor: 'Builder floors', apartment: 'Apartments'};
+const needsAttention = l => l.status === 'stale' || (l.low_confidence || []).length > 0;
+const statusCls = st => st === 'available' ? 'ok' : st === 'stale' ? 'warn' : st === 'sold' || st === 'rented' ? 'bad' : '';
+const dayKey = iso => new Date(iso).toLocaleDateString('en-CA');
+const dayLabel = iso => { const k = dayKey(iso), t = dayKey(new Date()), y = dayKey(new Date(Date.now() - 864e5)); return k === t ? 'Today' : k === y ? 'Yesterday' : new Date(iso).toLocaleDateString('en-GB', {day: 'numeric', month: 'short'}); };
+const timeLabel = iso => new Date(iso).toLocaleTimeString('en-GB', {hour: '2-digit', minute: '2-digit'});
+const CHEV = '<svg class="chev" viewBox="0 0 24 24"><path d="m5 9 7 7 7-7"/></svg>';
+const skel = n => Array.from({length: n}, () => '<div class="skel"></div>').join('');
+function setHTML(el, html, key) { const k = JSON.stringify(key); if (el.dataset.k === k) return; el.dataset.k = k; el.innerHTML = html; }   // skip identical renders: no flicker, scroll and focus survive
+function groupBy(arr, keyFn) { const m = new Map(); arr.forEach(x => { const k = keyFn(x); if (!m.has(k)) m.set(k, []); m.get(k).push(x); }); return m; }
+
+function renderSide() {
+  $('#adminTab').hidden = state.me.role !== 'owner'; if (tab === 'admin' && state.me.role !== 'owner') tab = 'listings';
+  document.querySelectorAll('.tabs button').forEach(x => x.classList.toggle('on', x.dataset.tab === tab));
+  const cnt = {listings: state.listings.length, reqs: state.requirements.filter(r => r.status === 'open').length, notes: state.notes.length, groups: state.groups.length, history: ''};
+  document.querySelectorAll('.tabs button').forEach(x => { const c = x.querySelector('.cnt'); if (c) c.textContent = cnt[x.dataset.tab] || ''; });
+  const c = state.settings;
+  $('#cfg').textContent = c.enabled ? `Reminders every ${c.interval_hours}h, ${c.business_start}–${c.business_end}; day summary at ${c.eod_time}${c.snooze_until && c.snooze_until > new Date().toISOString() ? ' · snoozed' : ''}` : 'Reminders are off';
+  if (builtTab !== tab) { buildPane(); builtTab = tab; }
+  ({listings: renderList, reqs: renderReqs, notes: renderNotes, history: renderHistory, groups: renderGroups, admin: () => {}})[tab]();
+}
+
+function buildPane() {
+  const p = $('#pane'); p.classList.remove('fade'); void p.offsetWidth; p.classList.add('fade');
+  if (tab === 'listings') {
+    p.innerHTML = `<div class="tool"><div class="top"><input id="q" type="search" placeholder="Search properties" value="${esc(ui.q)}" autocomplete="off"><select id="sort" aria-label="Sort"><option value="new">Newest</option><option value="attention">Needs a check first</option><option value="high">Price: high to low</option><option value="low">Price: low to high</option><option value="old">Not checked for longest</option></select></div>
+      <div class="pillrow"><div class="pills" data-k="type"><button data-v="all">All<i></i></button><button data-v="plot">Plots<i></i></button><button data-v="builder_floor">Floors<i></i></button><button data-v="apartment">Apartments<i></i></button></div>
+      <div class="pills" data-k="view"><button data-v="all">All</button><button data-v="attention">Needs a check<i></i></button><button data-v="sale">For sale</button><button data-v="rent">For rent</button></div></div>
+      <div class="sum" id="lsum"></div><div id="list"></div>`;
+    $('#sort').value = ui.sort;
+    let t; $('#q').oninput = e => { clearTimeout(t); t = setTimeout(() => { ui.q = e.target.value; renderList(); }, 120); };
+    $('#sort').onchange = e => { ui.sort = e.target.value; renderList(); };
+    p.querySelectorAll('.pills').forEach(g => g.onclick = e => { const b = e.target.closest('button'); if (!b) return; ui[g.dataset.k] = b.dataset.v; renderList(); });
+  } else if (tab === 'groups') {
+    const opts = ['Sushant Lok Brokers', 'GGN Plots & Floors'].concat(state.groups.map(g => g.name)).filter((v, i, a) => a.indexOf(v) === i);
+    p.innerHTML = `<div class="m" style="color:var(--muted)">Messages from your WhatsApp groups can be passed to the assistant. It alerts you only about real property listings and client needs. Everything else is skipped and <b>never saved</b>.</div>
+      <div class="card frm"><select id="gname">${opts.map(o => `<option>${esc(o)}</option>`).join('')}</select>
+        <input id="gsender" placeholder="Sender name" value="Mukesh">
+        <textarea id="gtext" rows="3" placeholder="Paste a group message"></textarea>
+        <div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center"><button class="btn primary" onclick="postGroup()">Try this message</button> <button class="btn" onclick="runFeed()">Try 15 example messages</button> <span id="gstat" class="m"></span></div></div>
+      <div class="sec">Your WhatsApp groups</div><div id="list"></div>`;
+  } else if (tab === 'admin') {
+    p.innerHTML = skel(4); renderAdmin();
+  } else {
+    p.innerHTML = '<div id="list"></div>';
+  }
+}
+
+// ----- inventory -----
+function filteredListings(src) {
+  const q = ui.q.trim().toLowerCase();
+  const by = {new: (a, b) => b.id - a.id, high: (a, b) => (b.price_total || 0) - (a.price_total || 0), low: (a, b) => (a.price_total || 9e15) - (b.price_total || 9e15),
+              old: (a, b) => (b.age_days || 0) - (a.age_days || 0), attention: (a, b) => (needsAttention(b) - needsAttention(a)) || (b.age_days || 0) - (a.age_days || 0)};
+  return src.filter(l => (ui.type === 'all' || l.type === ui.type)
+      && (ui.view === 'all' || (ui.view === 'attention' ? needsAttention(l) : l.purpose === ui.view))
+      && (!q || [l.title, l.market, l.society, l.owner_name, l.notes, l.facts.join(' '), '#' + l.id].join(' ').toLowerCase().includes(q))).sort(by[ui.sort]);
+}
+function listRow(l, readonly) {
+  const rent = l.purpose === 'rent', open = ui.open.has(l.id);
+  return `<div class="lrow ${open ? 'lopen' : ''} ${needsAttention(l) ? 'needs' : ''}" data-id="${l.id}">
+    <button class="lhead" onclick="toggleRow(${l.id})" aria-expanded="${open}"><span class="lid">#${l.id}</span>
+      <span class="lmain"><span class="lt">${esc(l.title)}${rent ? ' · rent' : ''}</span><span class="ls">${esc(l.market)}${l.facts.length ? ' · ' + esc(l.facts.slice(0, 3).join(' · ')) : ''}</span></span>
+      <span class="lright"><span class="price">${money(l.price_total, rent)}</span><span class="tag ${statusCls(l.status)}">${STATUS[l.status] || l.status}</span>${(l.low_confidence || []).length && l.status !== 'stale' ? '<span class="tag warn">Please confirm</span>' : ''}</span>${CHEV}</button>
+    <div class="ldet"><div class="ldin" ${open ? 'data-ready="1"' : ''}>${open ? detail(l, readonly) : ''}</div></div></div>`;
+}
+function detail(l, readonly) {
+  const rent = l.purpose === 'rent';
+  const kv = [['Market', l.market], ['Purpose', rent ? 'Rent' : 'Sale'], ['Facing', l.facing], ['Road', l.road_width_ft && l.road_width_ft + ' ft'], ['Plot size', l.size_gaj && l.size_gaj + ' gaj'],
+    ['Super area', l.super_sqft && l.super_sqft + ' sq ft'], ['Floor', l.floor_number != null && (l.floor_number === 0 ? 'Ground' : l.floor_number)], ['Parking', l.parking_type],
+    ['Rate', l.type === 'plot' && l.price_per_gaj ? money(l.price_per_gaj) + ' per gaj' : null], ['Furnishing', l.furnishing], ['Owner', l.owner_name], ['Contact', l.owner_contact],
+    ['Price', l.price_flexibility && FLEX[l.price_flexibility]], ['Source', l.source || (l.shared_by && 'Shared by ' + l.shared_by)], ['Last checked', l.age_days === 0 ? 'Today' : l.age_days + ' days ago']]
+    .filter(([, v]) => v !== null && v !== undefined && v !== false && v !== '');
+  const flags = (l.low_confidence || []).length ? `<div class="note" style="border-color:var(--warn)">Please check: ${esc(l.low_confidence.join(', ').replace(/_/g, ' '))}. Reply “ok” in chat if it is correct.</div>` : '';
+  return `<div class="dbody"><div class="kv">${kv.map(([k, v]) => `<div><small>${k}</small><span>${esc(v)}</span></div>`).join('')}</div>${flags}
+    ${l.notes ? `<div class="note">${esc(l.notes)}</div>` : ''}${l.photos && l.photos.length ? `<div class="m" style="color:var(--muted)">${l.photos.length} photo${l.photos.length > 1 ? 's' : ''} attached</div>` : ''}
+    <div class="acts"><button class="btn primary" onclick="shareListing(${l.id})">Send to client</button>
+    ${!readonly && state.me.team_size > 1 ? `<button class="btn ${l.shared ? 'on' : ''}" onclick="share(${l.id}, ${!l.shared})">${l.shared ? 'Shared with your team' : 'Share with your team'}</button>` : ''}</div></div>`;
+}
+function toggleRow(id) {
+  const el = document.querySelector(`.lrow[data-id="${id}"]`); if (!el) return;
+  const din = el.querySelector('.ldin');
+  if (!din.dataset.ready) { const l = state.listings.find(x => x.id === id) || state.team_listings.find(x => x.id === id); din.innerHTML = detail(l, !!l.shared_by); din.dataset.ready = 1; }
+  const open = el.classList.toggle('lopen'); open ? ui.open.add(id) : ui.open.delete(id);
+  el.querySelector('.lhead').setAttribute('aria-expanded', open);
+}
+function renderList() {
+  if (tab !== 'listings') return;
+  const all = state.listings, mine = filteredListings(all), team = filteredListings(state.team_listings);
+  const attn = all.filter(needsAttention).length;
+  const counts = {type: {all: all.length, plot: 0, builder_floor: 0, apartment: 0}, view: {attention: attn}};
+  all.forEach(l => counts.type[l.type]++);
+  document.querySelectorAll('.pills').forEach(g => g.querySelectorAll('button').forEach(b => { b.classList.toggle('on', ui[g.dataset.k] === b.dataset.v); const i = b.querySelector('i'); const n = (counts[g.dataset.k] || {})[b.dataset.v]; if (i) i.textContent = n ?? ''; }));
+  $('#lsum').textContent = `Showing ${mine.length} of ${all.length} properties` + (attn ? ` · ${attn} need a quick check` : '');
+  let h = '';
+  if (!mine.length) h += `<div class="empty">${all.length ? 'Nothing matches your search.<br><br><button class="btn" onclick="clearFilters()">Show everything</button>' : 'No properties yet.<br>Send or forward one in the chat to add it.'}</div>`;
+  else if (ui.type === 'all') groupBy(mine, l => l.type).forEach((arr, t) => { h += `<div class="ghead">${TYPE_NAMES[t] || t}<span>${arr.length}</span></div>` + arr.map(l => listRow(l, false)).join(''); });
+  else h += mine.map(l => listRow(l, false)).join('');
+  if (team.length) h += `<div class="ghead">Shared by your team (view only)<span>${team.length}</span></div>` + team.map(l => listRow(l, true)).join('');
+  setHTML($('#list'), h, [mine, team, ui.type]);
+}
+function clearFilters() { Object.assign(ui, {q: '', type: 'all', view: 'all'}); const q = $('#q'); if (q) q.value = ''; renderList(); }
+
+// ----- requirements -----
+const reqCache = {};
+function reqRow(r) {
+  const open = ui.reqOpen.has(r.id), isOpen = r.status === 'open';
+  return `<div class="lrow ${open ? 'lopen' : ''} ${isOpen ? '' : 'dim'}" data-rid="${r.id}">
+    <button class="lhead" onclick="toggleReq(${r.id})" aria-expanded="${open}"><span class="lid">#${r.id}</span>
+      <span class="lmain"><span class="lt">${esc(r.client_name || 'Client')}</span><span class="ls">${esc(r.label)}</span></span>
+      <span class="lright"><span class="tag ${isOpen && r.match_count ? 'ok' : ''}">${isOpen ? (r.match_count ? r.match_count + (r.match_count === 1 ? ' match' : ' matches') : 'No matches yet') : (STATUS[r.status] || r.status)}</span></span>${CHEV}</button>
+    <div class="ldet"><div class="ldin" ${open ? 'data-ready="1"' : ''}>${open ? reqDetail(r) : ''}</div></div></div>`;
+}
+function reqDetail(r) {
+  const kv = [['Status', r.status], ['Timeline', r.timeline], ['Motivation', r.motivation], ['Decision maker', r.decision_maker], ['Source', r.source]].filter(([, v]) => v);
+  const ms = reqCache[r.id];
+  const list = !ms ? '<div class="skel" style="height:44px"></div>' : ms.length ? ms.map(m => `<div class="mrow"><span><b>#${m.id}</b> ${esc(m.title)} · ${esc(m.market || '')}${m.shared_by ? ' · team: ' + esc(m.shared_by) : ''}</span><span class="price">${money(m.price, m.rent)}</span>
+      <small>${m.fits.length ? 'Fits: ' + esc(m.fits.join(', ')) : ''}${m.lacks.length ? ' · Lacks: ' + esc(m.lacks.join('; ')) : ''}</small></div>`).join('') : '<div class="m" style="color:var(--muted)">No matching properties yet. You will get an alert when one arrives.</div>';
+  return `<div class="dbody">${kv.length ? `<div class="kv">${kv.map(([k, v]) => `<div><small>${k}</small><span>${esc(v)}</span></div>`).join('')}</div>` : ''}
+    <div class="sec" style="margin:0">Best matches</div><div id="rm${r.id}">${list}</div>
+    ${ms && ms.length ? `<div class="acts"><button class="btn" onclick="shareMany([${ms.slice(0, 3).map(m => m.id).join(',')}])">${ICON_SHARE} Send best matches to client</button></div>` : ''}</div>`;
+}
+async function toggleReq(id) {
+  const el = document.querySelector(`.lrow[data-rid="${id}"]`); if (!el) return;
+  const r = state.requirements.find(x => x.id === id), din = el.querySelector('.ldin');
+  const open = el.classList.toggle('lopen'); open ? ui.reqOpen.add(id) : ui.reqOpen.delete(id);
+  el.querySelector('.lhead').setAttribute('aria-expanded', open);
+  if (!open) return;
+  din.innerHTML = reqDetail(r); din.dataset.ready = 1;
+  if (r.status === 'open') {
+    reqCache[id] = await (await fetch(`/api/requirement/matches?broker_id=${broker}&id=${id}`)).json();
+    if (ui.reqOpen.has(id)) din.innerHTML = reqDetail(r);
+  } else reqCache[id] = [];
+}
+function renderReqs() {
+  if (tab !== 'reqs') return;
+  const rs = [...state.requirements].sort((a, b) => (b.status === 'open') - (a.status === 'open') || b.match_count - a.match_count || b.id - a.id);
+  const open = rs.filter(r => r.status === 'open'), closed = rs.filter(r => r.status !== 'open');
+  setHTML($('#list'), !rs.length ? '<div class="empty">No client needs yet.<br>Tell the assistant what a client is looking for.</div>' :
+    `<div class="sum" style="margin-bottom:4px">${open.filter(r => r.match_count).length} of ${open.length} clients have matching properties</div>` +
+    (open.length ? `<div class="ghead">Looking now<span>${open.length}</span></div>` + open.map(reqRow).join('') : '') +
+    (closed.length ? `<div class="ghead">Closed<span>${closed.length}</span></div>` + closed.map(reqRow).join('') : ''), rs);
+}
+
+// ----- notes (follow-ups first, then notes by day) -----
+function renderNotes() {
+  if (tab !== 'notes') return;
+  const today = dayKey(new Date()), dueRank = t => t.done ? 3 : !t.due ? 2 : t.due < today ? 0 : 1;
+  const fus = [...state.tasks].sort((a, b) => dueRank(a) - dueRank(b) || (a.due || '').localeCompare(b.due || ''));
+  let h = `<div class="ghead">Things to follow up<span>${fus.filter(t => !t.done).length} pending</span></div>` +
+    (fus.map(t => `<div class="fu ${t.done ? 'done' : ''}"><span class="tag ${t.done ? 'ok' : t.due && t.due < today ? 'bad' : t.due === today ? 'warn' : ''}">${t.done ? 'Done' : t.due ? (t.due < today ? 'Overdue' : t.due === today ? 'Today' : t.due.slice(5)) : 'Open'}</span><span>${esc(t.text)}${t.outcome ? `<small style="display:block;color:var(--muted)">Outcome: ${esc(t.outcome)}</small>` : ''}</span></div>`).join('') || '<div class="empty">Nothing to follow up</div>');
+  h += `<div class="ghead">Notes and calls<span>You can ask about any of these in chat</span></div>`;
+  if (!state.notes.length) h += '<div class="empty">No notes yet.<br>Tell the assistant about a visit or call and it will be saved here.</div>';
+  else groupBy(state.notes, n => dayKey(n.ts)).forEach(arr => { h += `<div class="sec" style="margin:10px 0 2px">${dayLabel(arr[0].ts)}</div>` + arr.map(n => `<div class="tl"><time>${timeLabel(n.ts)}</time><div>${esc(n.text)}<small><span class="tag">${esc(n.kind[0].toUpperCase() + n.kind.slice(1))}</span>${n.listing_id ? 'Property #' + n.listing_id : ''}${n.listing_id && n.client_name ? ' · ' : ''}${n.client_name ? esc(n.client_name) : ''}</small></div></div>`).join(''); });
+  setHTML($('#list'), h, [fus, state.notes]);
+}
+
+// ----- activity (grouped by day) -----
+function renderHistory() {
+  if (tab !== 'history') return;
+  let h = '';
+  if (!state.history.length) h = '<div class="empty">Nothing here yet</div>';
+  else groupBy(state.history, x => dayKey(x.ts)).forEach(arr => { h += `<div class="ghead">${dayLabel(arr[0].ts)}<span>${arr.length}</span></div>` + arr.map(x => `<div class="tl"><time>${timeLabel(x.ts)}</time><div><b>${esc(({listing: 'Property', requirement: 'Client need', admin: 'Team', share: 'Share', general: 'Note'})[x.entity] || x.entity)}${x.entity_id ? ' #' + x.entity_id : ''}</b> · ${esc(x.event.replace(/_/g, ' '))}${x.detail ? `<small>${esc(x.detail.slice(0, 120))}</small>` : ''}</div></div>`).join(''); });
+  setHTML($('#list'), h, state.history);
+}
+
+// ----- groups table (form is built once so typing is never lost) -----
+function renderGroups() {
+  if (tab !== 'groups') return;
+  const gs = state.groups;
+  setHTML($('#list'), gs.length ? `<table><tr><th>Group</th><th>Messages</th><th>Alerts</th><th>Skipped</th><th>Repeats</th><th></th></tr>` + gs.map((g, i) =>
+    `<tr><td>${esc(g.name)}</td><td>${g.seen}</td><td>${g.surfaced}</td><td>${g.ignored}</td><td>${g.duplicates}</td><td><button class="btn ${g.muted ? '' : 'on'}" onclick="mute(${i}, ${!g.muted})">${g.muted ? 'muted' : 'watching'}</button></td></tr>`).join('') + '</table>' : '<div class="empty">No group messages yet</div>', gs);
+}
+
+function sendText(t) { $('#txt').value = t; return send(); }
+
+async function send() {
+  const text = $('#txt').value.trim();
+  if (!text && !files.length) return;
+  const media = files.map(f => f.type.startsWith('image/') ? {kind: 'image', url: URL.createObjectURL(f)} : {kind: f.type.startsWith('audio') || f.name.startsWith('voice') ? 'audio' : 'pdf', name: f.name});
+  const me = bubble('me', text, media);                       // optimistic: appears instantly
+  const fd = new FormData(); fd.append('broker_id', broker); fd.append('text', text); files.forEach(f => fd.append('files', f));
+  $('#txt').value = ''; files = []; $('#files').textContent = ''; autosize(); chips([]);
+  const t0 = performance.now(), t = bubble('bot', ''); t.innerHTML = '<span class="think"><i></i><i></i><i></i><span style="margin-left:6px">Thinking…</span></span>';
+  document.body.classList.add('busy');
+  const tick = setInterval(() => { const e = $('#tk'); if (e) e.textContent = ((performance.now() - t0) / 1000).toFixed(1) + 's'; }, 100);
+  try {
+    const res = await (await fetch('/api/chat', {method: 'POST', body: fd})).json();
+    t.remove(); if (res.last_id) lastId = res.last_id;
+    if (res.transcript) { const tr = me.querySelector('.tr'); if (tr) tr.textContent = '“' + res.transcript + '”'; }
+    const total = Math.round(performance.now() - t0);
+    (res.replies || []).forEach((r, i, a) => bubble('bot', r.text, r.images.map(u => ({kind: 'image', url: u})), i === a.length - 1 ? (res.fast ? res.ms : total) : null, res.fast));
+    setLat(res.fast ? res.ms : total, res.fast);
+    res.suggestions && res.suggestions.length ? chips(res.suggestions) : defaultChips();
+  } catch (e) { t.remove(); bubble('bot', 'Error: ' + e); defaultChips(); }
+  clearInterval(tick); document.body.classList.remove('busy');
+  refresh();
+}
+
+function autosize() { const t = $('#txt'); t.style.height = 'auto'; t.style.height = Math.min(t.scrollHeight, 120) + 'px'; t.style.overflowY = t.scrollHeight > 120 ? 'auto' : 'hidden'; }
+$('#txt').addEventListener('input', autosize);
+$('#txt').addEventListener('keydown', e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); send(); } });
+document.addEventListener('keydown', e => { if (e.key === '/' && !/INPUT|TEXTAREA|SELECT/.test(document.activeElement.tagName)) { e.preventDefault(); $('#txt').focus(); } if (e.key === 'Escape') $('#modal').hidden = true; });
+$('#send').onclick = send;
+$('#attach').onclick = () => $('#file').click();
+$('#file').onchange = e => { files.push(...e.target.files); $('#files').textContent = 'Attached: ' + files.map(f => f.name).join(', '); e.target.value = ''; };
+
+$('#mic').onclick = async () => {
+  if (rec) { rec.stop(); return; }
+  try {
+    const stream = await navigator.mediaDevices.getUserMedia({audio: true});
+    rec = new MediaRecorder(stream); chunks = [];
+    rec.ondataavailable = e => chunks.push(e.data);
+    rec.onstop = () => {
+      stream.getTracks().forEach(t => t.stop());
+      const type = rec.mimeType || 'audio/webm', ext = type.includes('mp4') ? 'm4a' : 'webm';
+      files.push(new File(chunks, 'voice-note.' + ext, {type: type.split(';')[0]}));
+      rec = null; $('#mic').classList.remove('rec'); send();
+    };
+    rec.start(); $('#mic').classList.add('rec');
+  } catch (e) { bubble('bot', 'Microphone not available: ' + e.message); }
+};
+
+document.querySelectorAll('.tabs button').forEach(b => b.onclick = () => { tab = b.dataset.tab; renderSide(); });
+$('#broker').onchange = e => { broker = e.target.value; localStorage.setItem('broker', broker); load(); };
+$('#reset').onclick = async () => { if (confirm('Reset all demo data and chats?')) { await fetch('/api/reset', {method: 'POST'}); $('#menu').open = false; load(); } };
+$('#samples').onchange = e => { const s = samples.find(x => x.id === e.target.value); if (s) { $('#txt').value = s.text; autosize(); $('#txt').focus(); $('#menu').open = false; } e.target.value = ''; };
+const paintTheme = () => { const l = document.documentElement.dataset.theme === 'light'; $('#theme').textContent = l ? 'Dark mode' : 'Light mode'; document.querySelector('meta[name=theme-color]').content = l ? '#f4f4f5' : '#0a0a0b'; };
+$('#theme').onclick = () => { const n = document.documentElement.dataset.theme === 'light' ? 'dark' : 'light'; document.documentElement.dataset.theme = n; try { localStorage.setItem('theme', n); } catch (e) {} paintTheme(); };
+paintTheme();
+document.addEventListener('click', e => { const m = $('#menu'); if (m.open && !m.contains(e.target)) m.open = false; });
+
+async function share(id, v) { await fetch(`/api/share?broker_id=${broker}&listing_id=${id}&shared=${v}`, {method: 'POST'}); refresh(); }
+async function mute(i, m) { const g = state.groups[i].name; await fetch(`/api/group/mute?broker_id=${broker}&group=${encodeURIComponent(g)}&muted=${m}`, {method: 'POST'}); refresh(); }
+async function ingest(group, sender, text) { return (await post('/api/group/ingest', {broker_id: broker, group, sender, text})).json(); }
+async function postGroup() {
+  const r = await ingest($('#gname').value, $('#gsender').value || 'Someone', $('#gtext').value);
+  $('#gstat').textContent = r.outcome ? 'Result: ' + ({surfaced: 'alert sent', ignored: 'skipped', duplicate: 'already seen', muted: 'group muted'}[r.outcome] || r.outcome) : 'Error: ' + (r.detail || 'failed'); $('#gtext').value = ''; await poll(); refresh();
+}
+async function runFeed() {
+  const feed = await (await fetch('/api/group-samples')).json(), tally = {}; let n = 0;
+  for (const m of feed) { const r = await ingest(m.group, m.sender, m.text); tally[r.outcome] = (tally[r.outcome] || 0) + 1; $('#gstat').textContent = `${++n}/${feed.length}`; }
+  $('#gstat').textContent = Object.entries(tally).map(([k, v]) => `${v} ${k}`).join(' · '); await poll(); refresh();
+}
+async function renderAdmin() {
+  const p = $('#pane'), r = await fetch(`/api/admin/overview?broker_id=${broker}`);
+  if (!r.ok) { p.innerHTML = '<div class="empty">Only the team owner can see this</div>'; return; }
+  const o = await r.json();
+  p.innerHTML = `<div class="sec">Your team · ${esc(o.brokerage.name)}</div><table><tr><th>Broker</th><th>Role</th><th>Properties</th><th>Shared</th><th>Client needs</th><th>Up to date</th></tr>` +
+    o.members.map(m => `<tr><td>${esc(m.name)}<div class="m" style="color:var(--muted)">${esc(m.phone || '')}</div></td><td>${m.role}</td><td>${m.listings}</td><td>${m.shared}</td><td>${m.open_requirements}</td><td>${m.fresh_pct}%</td></tr>`).join('') +
+    `</table><div class="m" style="color:var(--muted);font-size:12px">Each broker's properties are private unless shared. As the owner you can view and download everything (downloads are recorded).</div>
+    <div class="sec">Download</div><div style="display:flex;gap:6px"><button class="btn" onclick="download('/api/admin/export?broker_id=${broker}&format=csv', 'properties.csv')">Download properties (CSV)</button> <button class="btn" onclick="download('/api/admin/export?broker_id=${broker}&format=json', 'everything.json')">Download everything</button></div>
+    <div class="sec">Add a broker to your team</div><div class="card frm"><input id="nbname" placeholder="Name"><input id="nbphone" placeholder="WhatsApp number, e.g. +91 98xxxxxxxx">
+    <div><button class="btn primary" onclick="addBroker()">Add to team</button> <span id="nbmsg" class="m"></span></div></div>`;
+}
+async function addBroker() {
+  const r = await post(`/api/admin/brokers?broker_id=${broker}`, {name: $('#nbname').value, phone: $('#nbphone').value});
+  const j = await r.json(); $('#nbmsg').textContent = r.ok ? 'Added ' + j.name + '. They can now message the assistant on WhatsApp.' : 'Error: ' + (j.detail || j.error);
+  if (r.ok) { await loadBrokers(); renderAdmin(); }
+}
+async function loadBrokers() {
+  const bs = await (await fetch('/api/brokers')).json();
+  $('#broker').innerHTML = bs.map(b => `<option value="${b.id}">${esc(b.name.replace(' (demo)', ''))}${b.role === 'owner' ? ' (owner)' : ''} · ${esc(b.brokerage || 'solo')}</option>`).join('');
+  $('#broker').value = broker; return bs;
+}
+
+let waStatus = {api_configured: false};
+function waDigits(raw) { const d = (raw || '').replace(/\D/g, ''); return d.length === 10 ? '91' + d : d; }
+function openShareModal(text, note) {
+  $('#mtext').value = text; $('#mnote').textContent = note; $('#mstat').textContent = ''; $('#mstat').className = 'm';
+  try { $('#mto').value = localStorage.getItem('lastTo') || ''; } catch (e) {}
+  $('#msend').disabled = !waStatus.api_configured;
+  $('#msend').title = waStatus.api_configured ? '' : 'Business WhatsApp number not connected yet. Use Open in WhatsApp.';
+  $('#msend').textContent = waStatus.api_configured ? 'Send from business number' : 'Business number not connected';
+  $('#modal').hidden = false;
+}
+async function shareReply(text) {
+  const r = await (await post('/api/share-text/from-reply', {broker_id: broker, text})).json();
+  openShareModal(r.text, r.client_safe ? 'Ready to send. The owner’s name and number, and your private notes, are not included.' : 'Please read before sending. This is the assistant’s reply and may include private details.');
+}
+async function shareMany(ids) {
+  const r = await (await post('/api/share-text', {broker_id: broker, listing_ids: ids})).json();
+  openShareModal(r.text, 'Ready to send. The owner’s name and number, and your private notes, are not included.');
+}
+const shareListing = id => shareMany([id]);
+$('#mclose').onclick = () => { $('#modal').hidden = true; };
+$('#modal').onclick = e => { if (e.target.id === 'modal') $('#modal').hidden = true; };
+$('#mme').onclick = () => { $('#mto').value = (state.me && state.me.phone) || ''; };
+$('#mwa').onclick = () => {
+  const d = waDigits($('#mto').value);
+  if (d.length < 11) { $('#mstat').className = 'm errmsg'; $('#mstat').textContent = 'Enter a valid WhatsApp number first.'; return; }
+  try { localStorage.setItem('lastTo', $('#mto').value); } catch (e) {}
+  window.open(`https://wa.me/${d}?text=${encodeURIComponent($('#mtext').value)}`, '_blank', 'noopener');
+};
+$('#msend').onclick = async () => {
+  const st = $('#mstat'); st.className = 'm'; st.textContent = 'Sending…';
+  const r = await post('/api/whatsapp/send', {broker_id: broker, to: $('#mto').value, text: $('#mtext').value}), j = await r.json();
+  if (r.ok) { try { localStorage.setItem('lastTo', $('#mto').value); } catch (e) {} st.className = 'm okmsg'; st.textContent = 'Sent' + (j.mode === 'template' ? ' (as an approved template message)' : ''); }
+  else { st.className = 'm errmsg'; st.textContent = 'Error: ' + (j.detail || 'could not send'); }
+};
+$('#lockgo').onclick = async () => {
+  const k = $('#lockkey').value.trim(); if (!k) return;
+  try { localStorage.setItem('accessKey', k); } catch (e) {}
+  const r = await fetch('/api/brokers');
+  if (r.status === 401) { $('#lockerr').textContent = 'That code is not right. Please try again.'; return; }
+  location.reload();
+};
+$('#lockkey').addEventListener('keydown', e => { if (e.key === 'Enter') $('#lockgo').click(); });
+document.querySelectorAll('#seg button').forEach(b => b.onclick = () => {
+  document.querySelectorAll('#seg button').forEach(x => x.classList.toggle('on', x === b)); document.body.classList.toggle('dataview', b.dataset.v === 'data');
+});
+document.querySelectorAll('[data-trig]').forEach(b => b.onclick = async () => { await fetch(`/api/dev/trigger?broker_id=${broker}&kind=${b.dataset.trig}`, {method: 'POST'}); poll(); });
+
+async function poll() {
+  if (document.hidden) return;
+  try {
+    const r = await (await fetch(`/api/poll?broker_id=${broker}&after=${lastId}`)).json();
+    r.messages.forEach(m => { lastId = Math.max(lastId, m.id); if (m.role === 'bot') bubble('bot', m.text, m.media); });
+    if (r.messages.length) refresh();
+  } catch (e) {}
+}
+setInterval(poll, 4000);
+
+(async () => {
+  const [bs, h, ss] = await Promise.all([fetch('/api/brokers').then(r => r.json()), fetch('/api/health').then(r => r.json()), fetch('/api/samples').then(r => r.json())]);
+  if (!bs.find(b => b.id === broker)) broker = bs[0].id; await loadBrokers();
+  waStatus = await (await fetch('/api/whatsapp/status')).json();
+  $('#conn').textContent = (h.llm_configured ? 'Assistant: connected' : 'Assistant: not connected') + '  ·  ' + (waStatus.api_configured ? 'WhatsApp: connected' : 'WhatsApp: share by link');
+  $('#health').innerHTML = `<span><span class="dot ${h.llm_configured ? 'on' : ''}"></span>AI</span><span><span class="dot ${waStatus.api_configured ? 'on' : ''}"></span>WhatsApp</span>`;
+  $('#health').title = (h.llm_configured ? 'AI connected' : 'AI not configured') + ' · ' + (waStatus.api_configured ? 'WhatsApp business number connected' : 'WhatsApp: links only (business number not connected)');
+  samples = ss; ss.forEach(s => $('#samples').insertAdjacentHTML('beforeend', `<option value="${s.id}">${esc(s.label)}</option>`));
+  load();
+})();
+</script>
+</body>
+</html>
