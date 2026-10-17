@@ -65,7 +65,7 @@ py -3.11 -m venv .venv
 copy .env.example .env        # fill in Azure endpoint, key, deployment names
 .venv\Scripts\python -m uvicorn app.main:app --port 8000
 ```
-Open http://127.0.0.1:8000. Two demo brokers (Rohit, Anita) show data isolation. "Try a sample message"
+Open http://127.0.0.1:8000. Two demo brokers (Yuvraj, Anita) show data isolation. "Try a sample message"
 loads realistic Gurgaon / Hinglish messages.
 
 ## Azure OpenAI setup

@@ -166,6 +166,9 @@ def trigger(broker_id: str, kind: str):
 
 @app.post("/api/reset")
 def reset():
+    """Demo only: wipes everything and reloads the sample data. Disabled when SEED_DEMO=0 (real data)."""
+    if os.environ.get("SEED_DEMO", "1") == "0":
+        raise HTTPException(403, "Reset is disabled because SEED_DEMO=0 (this server holds real data).")
     seed.run(reset=True)
     return {"ok": True}
 

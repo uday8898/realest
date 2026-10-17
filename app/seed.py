@@ -3,11 +3,11 @@ from datetime import datetime, timedelta, timezone
 
 from . import db, normalize as N
 
-# (id, name, brokerage, role, phone). Rohit + Anita are one team; Vikram is a separate brokerage.
-BROKERS = [("rohit", "Rohit Sharma (demo)", "sharma-realty", "owner", "+91 98100 00001"),
-           ("anita", "Anita Verma (demo)", "sharma-realty", "broker", "+91 98100 00002"),
+# (id, name, brokerage, role, phone). Yuvraj + Anita are one team; Vikram is a separate brokerage.
+BROKERS = [("yuvraj", "Yuvraj Chadha", "chadha-realty", "owner", "+91 98100 00001"),
+           ("anita", "Anita Verma (demo)", "chadha-realty", "broker", "+91 98100 00002"),
            ("vikram", "Vikram Singh (demo)", "singh-estates", "owner", "+91 98100 00003")]
-BROKERAGES = [("sharma-realty", "Sharma Realty"), ("singh-estates", "Singh Estates")]
+BROKERAGES = [("chadha-realty", "Chadha Realty"), ("singh-estates", "Singh Estates")]
 
 
 def ago(days: int) -> str:
@@ -18,7 +18,7 @@ def P(v, unit, basis="total"):
     return {"value": v, "unit": unit, "basis": basis}
 
 
-ROHIT_LISTINGS = [
+YUVRAJ_LISTINGS = [
     # (days since confirmed, raw listing)
     (3, dict(type="plot", micro_market="DLF 1", size={"value": 250, "unit": "gaj"}, corner=True, facing="north",
              road_width_ft=24, price=P(6, "lakh", "per_gaj"), price_flexibility="firm", owner_name="Mr. Bhalla",
@@ -73,7 +73,7 @@ VIKRAM_LISTINGS = [
              size={"value": 300, "unit": "gaj"}, park_view=True, price=P(7.4, "cr"))),
 ]
 
-ROHIT_REQS = [
+YUVRAJ_REQS = [
     dict(client_name="Mr. Sharma", type="builder_floor", micro_markets=["Sushant Lok"], bedrooms=4,
          budget_min=P(7, "cr"), budget_max=P(8, "cr"), must_haves={"park_view": True},
          nice_to_haves={"facing": ["east"]}, motivation="upgrading from apartment", timeline="2 months"),
@@ -112,13 +112,13 @@ def run(reset: bool = True) -> None:
         db.add_brokerage(bid, name)
     for bid, name, brokerage, role, phone in BROKERS:
         db.add_broker(bid, name, brokerage, role, phone)
-    ids = _add("rohit", ROHIT_LISTINGS)
+    ids = _add("yuvraj", YUVRAJ_LISTINGS)
     _add("anita", ANITA_LISTINGS)
     _add("vikram", VIKRAM_LISTINGS)
     rids = []
-    for raw in ROHIT_REQS:
-        rid = db.add_requirement("rohit", N.normalize_requirement(raw))
-        db.log("rohit", "requirement", rid, "created", "seed")
+    for raw in YUVRAJ_REQS:
+        rid = db.add_requirement("yuvraj", N.normalize_requirement(raw))
+        db.log("yuvraj", "requirement", rid, "created", "seed")
         rids.append(rid)
     # past notes + a follow-up due today, so recall / reminders / EOD can be demoed immediately
     (l_plot, l_sl1, l_gcr) = ids[0], ids[3], ids[6]
@@ -137,14 +137,14 @@ def run(reset: bool = True) -> None:
             vec = out[0] if out else None
         except Exception:
             pass
-        db.add_note("rohit", kind, text, lid, rid, client, vec, ts=ago(days))
-    db.add_task("rohit", "Call the Golf Course Road floor owner about a 2% discount", datetime.now(timezone.utc).date().isoformat(), l_gcr, r_kapoor)
-    db.add_message("rohit", "bot", "Hi Rohit! Forward me any listing (text, photo, PDF or voice note) or a client "
+        db.add_note("yuvraj", kind, text, lid, rid, client, vec, ts=ago(days))
+    db.add_task("yuvraj", "Call the Golf Course Road floor owner about a 2% discount", datetime.now(timezone.utc).date().isoformat(), l_gcr, r_kapoor)
+    db.add_message("yuvraj", "bot", "Hi Yuvraj! Forward me any listing (text, photo, PDF or voice note) or a client "
                    "requirement. Try: “find me a 3 BHK floor in Sushant Lok under 8 cr, park facing”.")
-    db.add_message("anita", "bot", "Hi Anita! Your inventory is private unless you share it. Rohit is on your team; "
+    db.add_message("anita", "bot", "Hi Anita! Your inventory is private unless you share it. Yuvraj is on your team; "
                    "say “share #14 with the team” to put a listing in the team pool.")
-    db.add_message("vikram", "bot", "Hi Vikram! You're in a different brokerage — nothing from Sharma Realty is visible here.")
+    db.add_message("vikram", "bot", "Hi Vikram! You're in a different brokerage — nothing from Chadha Realty is visible here.")
     db.update_settings("anita", enabled=False)
     db.update_settings("vikram", enabled=False)
     for g in ("GGN Plots & Floors", "Sushant Lok Brokers"):
-        db.set_group_muted("rohit", g, False)
+        db.set_group_muted("yuvraj", g, False)

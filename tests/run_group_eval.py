@@ -21,7 +21,7 @@ feed = json.load(open(os.path.join(os.path.dirname(__file__), "..", "samples", "
 want = {"ignore": {"ignored"}, "requirement": {"surfaced"}, "listing": {"surfaced"}, "duplicate": {"duplicate"}}
 ok = tp = fp = fn = llm_calls = 0
 for m in feed:
-    r = groups.ingest("rohit", m["group"], m["sender"], m["text"])
+    r = groups.ingest("yuvraj", m["group"], m["sender"], m["text"])
     good = r["outcome"] in want[m["expect"]]
     ok += good
     surfaced, should = r["outcome"] == "surfaced", m["expect"] in ("requirement", "listing")

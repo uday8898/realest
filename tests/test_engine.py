@@ -17,7 +17,7 @@ seed.run(reset=True)
 import json  # noqa: E402
 
 
-def say(actions, broker="rohit", text=None):
+def say(actions, broker="yuvraj", text=None):
     engine.set_understander(lambda t, i, c: {"actions": actions})
     return engine.handle(broker, text if text is not None else json.dumps(actions), [])
 
@@ -74,27 +74,27 @@ r = say([{"intent": "save_listing", "listing": dict(type="plot", micro_market="S
 assert "Not sure" not in txt(r), txt(r)   # grounded numbers are not flagged
 
 # --- broadcast split into several records
-before = len(db.list_listings("rohit"))
+before = len(db.list_listings("yuvraj"))
 say([{"intent": "save_listing", "listing": dict(type="builder_floor", micro_market="Sushant Lok 1", bedrooms=3,
                                                  floor_number=2, price={"value": 7.25, "unit": "cr"})},
      {"intent": "save_listing", "listing": dict(type="plot", micro_market="DLF Phase 3",
                                                  size={"value": 300, "unit": "gaj"},
                                                  price={"value": 5.5, "unit": "lakh", "basis": "per_gaj"})}])
-assert len(db.list_listings("rohit")) == before + 2
+assert len(db.list_listings("yuvraj")) == before + 2
 
 # --- duplicate arriving from another source is merged, not doubled
-n = len(db.list_listings("rohit"))
+n = len(db.list_listings("yuvraj"))
 r = say([{"intent": "save_listing", "listing": dict(
     type="plot", micro_market="DLF Phase 5", size={"value": 250, "unit": "gaj"}, corner=True, facing="north",
     price={"value": 15, "unit": "cr"}, source="group: GGN Plots", owner_contact="98100 11111")}])
-assert "Already had" in txt(r) and len(db.list_listings("rohit")) == n, txt(r)
+assert "Already had" in txt(r) and len(db.list_listings("yuvraj")) == n, txt(r)
 
 # --- correction in plain language
-floor = next(l for l in db.list_listings("rohit") if l["micro_market"] == "Sushant Lok 2" and l["type"] == "builder_floor"
+floor = next(l for l in db.list_listings("yuvraj") if l["micro_market"] == "Sushant Lok 2" and l["type"] == "builder_floor"
              and l["purpose"] == "sale")
 r = say([{"intent": "update_listing", "target_id": floor["id"], "updates": {"price": {"value": 6.1, "unit": "cr"}}}])
 assert "6.1 cr" in txt(r)
-assert any(h["event"] == "price_changed" for h in db.history("rohit", 20, "listing", floor["id"]))
+assert any(h["event"] == "price_changed" for h in db.history("yuvraj", 20, "listing", floor["id"]))
 
 # --- matching: must-have filters, ranking, reasons
 r = say([{"intent": "search", "criteria": dict(
@@ -103,11 +103,11 @@ r = say([{"intent": "search", "criteria": dict(
 out = txt(r)
 assert "match" in out and "park facing" in out and "7.5 cr" in out, out
 assert "Sector 56" not in out and "rent" not in out
-ids = [l for l in engine.db.get_session("rohit")["last_search"]["ids"]]
+ids = [l for l in engine.db.get_session("yuvraj")["last_search"]["ids"]]
 assert ids, "search should store results for follow-ups"
 for m in M.find_matches(N.normalize_requirement(dict(
         type="builder_floor", micro_markets=["Sushant Lok"], budget_max={"value": 8, "unit": "cr"},
-        must_haves={"park_view": True})), db.list_listings("rohit")):
+        must_haves={"park_view": True})), db.list_listings("yuvraj")):
     assert m["listing"].get("park_view") is not False and m["listing"]["price_total"] <= 8.4e7
 
 # --- follow-up "show 2nd"
@@ -130,16 +130,16 @@ assert "New listing" in txt(r) and "matches Mr. Sharma" in txt(r), txt(r)
 # --- freshness
 r = say([{"intent": "stale_check"}])
 assert "not confirmed in 30+ days" in txt(r), txt(r)
-stale_id = next(l["id"] for l in db.list_listings("rohit") if l["status"] == "stale")
+stale_id = next(l["id"] for l in db.list_listings("yuvraj") if l["status"] == "stale")
 say([{"intent": "set_status", "target_id": stale_id, "status": "available"}])
-assert db.get_listing("rohit", stale_id)["status"] == "available"
-assert M.days_since(db.get_listing("rohit", stale_id)["last_confirmed"]) == 0
+assert db.get_listing("yuvraj", stale_id)["status"] == "available"
+assert M.days_since(db.get_listing("yuvraj", stale_id)["last_confirmed"]) == 0
 
 # --- sold listings never match
 sold = ids[0]
 say([{"intent": "set_status", "target_id": sold, "status": "sold"}])
 assert all(m["listing"]["id"] != sold for m in M.find_matches(
-    N.normalize_requirement(dict(micro_markets=["Sushant Lok"])), db.list_listings("rohit")))
+    N.normalize_requirement(dict(micro_markets=["Sushant Lok"])), db.list_listings("yuvraj")))
 
 # --- broker isolation
 assert all(l["broker_id"] == "anita" for l in db.list_listings("anita"))

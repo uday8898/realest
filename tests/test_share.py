@@ -5,6 +5,7 @@ import tempfile
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 os.environ["WA_DB_PATH"] = os.path.join(tempfile.mkdtemp(), "ts.db")
+os.environ["APP_ACCESS_KEY"] = ""   # tests must not depend on a real key from the developer's .env
 for k in ("WHATSAPP_TOKEN", "WHATSAPP_PHONE_ID", "WHATSAPP_SHARE_TEMPLATE"):
     os.environ.pop(k, None)
 
@@ -29,19 +30,19 @@ assert n("919810011111") == "919810011111" and n("12345") is None and n("0981001
 assert n("+1 415 555 2671") == "14155552671"
 
 # ---- client-safe text: nothing confidential leaves
-l1 = next(l for l in db.list_listings("rohit") if l["type"] == "plot" and l["micro_market"] == "DLF Phase 1")
-txt = share.listings_text("rohit", [l1["id"]])
+l1 = next(l for l in db.list_listings("yuvraj") if l["type"] == "plot" and l["micro_market"] == "DLF Phase 1")
+txt = share.listings_text("yuvraj", [l1["id"]])
 assert "250 gaj corner plot" in txt and "15 cr" in txt and "6 lakh/gaj" in txt, txt
 for secret in (l1["owner_contact"], l1.get("owner_name") or "Bhalla", "firm", "serious", "bargaining", "owner"):
     assert secret.lower() not in txt.lower().replace("owner's", ""), f"leaked {secret!r}: {txt}"
-assert "Rohit Sharma" in txt and "Sharma Realty" in txt and "(demo)" not in txt
-multi = share.listings_text("rohit", [4, 5])
+assert "Yuvraj Chadha" in txt and "Chadha Realty" in txt and "(demo)" not in txt
+multi = share.listings_text("yuvraj", [4, 5])
 assert "1)" in multi and "2)" in multi and "Here are 2 options" in multi
 # a broker can only build text for listings they can see (own + shared), never another brokerage's
 vik = next(l for l in db.list_listings("vikram"))
-assert share.listings_text("rohit", [vik["id"]]) == ""
+assert share.listings_text("yuvraj", [vik["id"]]) == ""
 private = next(l for l in db.list_listings("anita") if "PRIVATE" in (l.get("notes") or ""))
-assert share.listings_text("rohit", [private["id"]]) == "", "teammate's private listing"
+assert share.listings_text("yuvraj", [private["id"]]) == "", "teammate's private listing"
 assert share.ids_in("1) #5 floor ... 2) #15 floor, also #5") == [5, 15]
 
 # ---- send_to: not configured
@@ -97,18 +98,18 @@ assert whatsapp.window_open("919999999999")
 
 # ---- HTTP endpoints
 whatsapp.send_to = lambda phone, text, post=None: {"mode": "text", "id": "wamid.T"}
-r = client.post("/api/whatsapp/send", json={"broker_id": "rohit", "to": "98100 11111", "text": "hello"})
+r = client.post("/api/whatsapp/send", json={"broker_id": "yuvraj", "to": "98100 11111", "text": "hello"})
 assert r.status_code == 200 and r.json()["to"] == "919810011111", r.text
-assert any(s["status"] == "sent" for s in db.list_shares("rohit"))
-assert client.post("/api/whatsapp/send", json={"broker_id": "rohit", "to": "123", "text": "x"}).status_code == 400
-assert client.post("/api/whatsapp/send", json={"broker_id": "rohit", "to": "9810011111", "text": " "}).status_code == 400
+assert any(s["status"] == "sent" for s in db.list_shares("yuvraj"))
+assert client.post("/api/whatsapp/send", json={"broker_id": "yuvraj", "to": "123", "text": "x"}).status_code == 400
+assert client.post("/api/whatsapp/send", json={"broker_id": "yuvraj", "to": "9810011111", "text": " "}).status_code == 400
 assert client.post("/api/whatsapp/send", json={"broker_id": "nobody", "to": "9810011111", "text": "x"}).status_code == 404
 
-r = client.post("/api/share-text", json={"broker_id": "rohit", "listing_ids": [l1["id"]]})
+r = client.post("/api/share-text", json={"broker_id": "yuvraj", "listing_ids": [l1["id"]]})
 assert "15 cr" in r.json()["text"] and l1["owner_contact"] not in r.json()["text"]
-r = client.post("/api/share-text/from-reply", json={"broker_id": "rohit", "text": f"1) #{l1['id']} plot — 15 cr, owner firm"}).json()
+r = client.post("/api/share-text/from-reply", json={"broker_id": "yuvraj", "text": f"1) #{l1['id']} plot — 15 cr, owner firm"}).json()
 assert r["client_safe"] and "firm" not in r["text"].lower()
-r = client.post("/api/share-text/from-reply", json={"broker_id": "rohit", "text": "Reminder: call the owner Friday"}).json()
+r = client.post("/api/share-text/from-reply", json={"broker_id": "yuvraj", "text": "Reminder: call the owner Friday"}).json()
 assert not r["client_safe"] and r["text"].startswith("Reminder")
 
 # rate limit: 30 sends/hour per broker
@@ -120,8 +121,8 @@ assert client.post("/api/whatsapp/send", json={"broker_id": "anita", "to": "9810
 def refuse(phone, text, post=None):
     raise whatsapp.SendError("nope")
 whatsapp.send_to = refuse
-r = client.post("/api/whatsapp/send", json={"broker_id": "rohit", "to": "9810011111", "text": "x"})
+r = client.post("/api/whatsapp/send", json={"broker_id": "yuvraj", "to": "9810011111", "text": "x"})
 assert r.status_code == 502 and "nope" in r.json()["detail"]
-assert db.list_shares("rohit")[0]["status"] == "failed"
+assert db.list_shares("yuvraj")[0]["status"] == "failed"
 
 print("all share tests passed")
